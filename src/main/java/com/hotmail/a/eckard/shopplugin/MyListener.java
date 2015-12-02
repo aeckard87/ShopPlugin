@@ -10,7 +10,7 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 
-import com.hotmail.a.eckard.shopplugin.pojo.PlayerStuff;
+import com.hotmail.a.eckard.shopplugin.pojo.Customer;
 import com.hotmail.a.eckard.shopplugin.pojo.ShopChest;
 import com.hotmail.a.eckard.shopplugin.pojo.ShopSign;
 
@@ -78,41 +78,47 @@ public class MyListener implements Listener{
 		Block b = event.getClickedBlock();
 		ShopSign shopSign = new ShopSign();
 		ShopChest shopChest = new ShopChest();
-		PlayerStuff consumer = new PlayerStuff();
+		Customer customer = new Customer();
 		
 		if(event.getAction()== Action.RIGHT_CLICK_BLOCK && b.getType() == Material.WALL_SIGN && b.getState() instanceof Sign){
 			//verify shop sign
 			if(shopSign.isShopSign((Sign) b.getState())){
-				shopSign.setShopValues((Sign) b.getState());//needs a failure message
-				
-				//check if shop chests are there and have room/inv
-				if(shopChest.shopChestExist(b)){
-					boolean shopChestSet = shopChest.setShopChest(b, shopSign);
-					if(shopChestSet){
-						//check if player has payment in hotbar
-						consumer.setMoney(player.getInventory());
-						if(consumer.isMoneyInHotBar(player.getInventory(), shopSign)){
-							if(consumer.hasEnoughMoney(player.getInventory(),shopSign)){
-								
-								consumer.payMerchant(shopSign);
-								shopChest.updateInv(shopSign);
-								shopChest.updateProfit(shopSign);
-								
-								player.sendMessage(consumer.getMessage());
-								
-								consumer.clear();
-								shopChest.clear();
-								shopSign.clear();
-								
+				if(shopSign.findGlassBlock(b)){
+					if(shopSign.setShopValues((Sign) b.getState())){
+						//check if shop chests are there and have room/inv
+						if(shopChest.shopChestExist(b, shopSign)){
+							boolean shopChestSet = shopChest.setShopChest(b, shopSign);
+							if(shopChestSet){
+								//check if player has payment in hotbar
+								customer.setMoney(player.getInventory());
+								if(customer.isMoneyInHotBar(player.getInventory(), shopSign)){
+									if(customer.hasEnoughMoney(player.getInventory(),shopSign)){
+										
+										customer.payMerchant(shopSign);
+										shopChest.updateInv(shopSign);
+										shopChest.updateProfit(shopSign);
+										
+										player.sendMessage(customer.getMessage());
+										
+										customer.clear();
+										shopChest.clear();
+										shopSign.clear();
+										
+									}else{
+										player.sendMessage(customer.getMessage());
+									}
+								}else{
+									player.sendMessage(customer.getMessage());
+								}
 							}else{
-								player.sendMessage(consumer.getMessage());
+								player.sendMessage(shopChest.getMessage());
 							}
-						}else{
-							player.sendMessage(consumer.getMessage());
 						}
 					}else{
-						player.sendMessage(shopChest.getMessage());
+						player.sendMessage(shopSign.getMessage());
 					}
+				}else{
+					player.sendMessage(shopSign.getMessage());
 				}
 			}
 		}//else not a shop action
@@ -135,6 +141,30 @@ public class MyListener implements Listener{
 		 * for
 		 * 15[4]
 		 */
-		
+		ShopSign shopSign = new ShopSign();
+		ShopChest shopChest = new ShopChest();
+		String[] lines = event.getLines();
+		Block signBlock = event.getBlock();
+		if(lines[0].equalsIgnoreCase("[shop]") && lines.length == 4){
+			//this is a shop sign that needs to be configured.
+			if(shopSign.findGlassBlock(signBlock)){
+				if(shopChest.shopChestExist(signBlock, shopSign)){
+					if(shopChest.findValues(shopSign, signBlock)){
+						if(shopSign.createShop(event)){
+							//Yay! what's next
+							event.getPlayer().sendMessage(shopSign.getMessage());
+						}else{
+							event.getPlayer().sendMessage(shopSign.getMessage());
+						}
+					}else{
+						event.getPlayer().sendMessage(shopChest.getMessage());
+					}
+				}else{
+					event.getPlayer().sendMessage(shopChest.getMessage());
+				}
+			}else{
+				event.getPlayer().sendMessage(shopSign.getMessage());
+			}
+		}
 	}
 }

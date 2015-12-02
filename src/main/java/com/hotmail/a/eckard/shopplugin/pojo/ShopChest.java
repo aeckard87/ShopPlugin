@@ -3,12 +3,10 @@ package com.hotmail.a.eckard.shopplugin.pojo;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Chest;
-import org.bukkit.block.DoubleChest;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.DoubleChestInventory;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-
-import com.google.gson.Gson;
 
 public class ShopChest {
 	public Inventory inv;
@@ -66,8 +64,26 @@ public class ShopChest {
 		this.profits = profits;
 	}
 	
-	public boolean shopChestExist(Block clickedBlock){
-		BlockFace[][] blockFaces = {{BlockFace.NORTH,BlockFace.SOUTH},{BlockFace.EAST,BlockFace.WEST}};
+	public boolean shopChestExist(Block clickedBlock, ShopSign sign){
+		//0=no found chests
+		//1= 1 chest found
+		//2 both chests found
+		
+		int result=0;
+		BlockFace[] blockFace = sign.getChestDir();
+		for(BlockFace face: blockFace){
+			Block chest = clickedBlock.getRelative(face);
+			if(chest.getState() instanceof Chest){
+				result += 1;
+			}
+		}
+		if(result == 2) return true;
+
+		message = " I couldn't find the shop's chests. Please make sure the shop has been set up properly.";
+		return false;
+		
+		
+	/*	BlockFace[][] blockFaces = {{BlockFace.NORTH,BlockFace.SOUTH},{BlockFace.EAST,BlockFace.WEST}};
 		
 		for(int i=0;i<blockFaces.length;i++){
 			Block chestBlockA = clickedBlock.getRelative(blockFaces[i][0]);
@@ -79,71 +95,64 @@ public class ShopChest {
 			}
 		}
 		message = " I couldn't find the shop's chests. Please make sure the shop has been set up properly.";
-		return false;
+		return false;*/
+	}
+	
+	public boolean saveInventory(Block block, ItemStack itemStack, ItemStack profitStack){
+		boolean containsItem = false;
+		boolean containsProfit = false;
+		if(block.getState() instanceof Chest){
+			Chest chest = (Chest) block.getState();
+
+			if(chest.getInventory() instanceof DoubleChestInventory){
+				DoubleChestInventory dInv = (DoubleChestInventory) chest.getInventory();
+
+				//we also need to check it the chest has different stack items and fail on this 
+				containsItem = doesChestHaveItem(dInv, itemStack);
+				containsProfit = doesChestHaveItem(dInv, profitStack);
+				
+				if(containsItem){
+					if(!isInvAvailable(dInv, itemStack)){
+						return false;
+					}
+					setInv(dInv);
+					
+				}else if(containsProfit){
+					if(!chestHasRoom(dInv, profitStack)){
+						return false;
+					}
+					setProfits(dInv);
+				}
+				
+			}
+		}
+		return true;
 	}
 	
 	public boolean setShopChest(Block clickedBlock, ShopSign sign){
+		//this needs to handle inv chest as always on the left of a sign and price always on the right of a sign
 		BlockFace[][] blockFaces = {{BlockFace.NORTH,BlockFace.SOUTH},{BlockFace.EAST,BlockFace.WEST}};
-		boolean containsItem = false;
-		boolean containsProfit = false;
-		//inv.contains(material) is deprecated use inv.contains(ItemStack)
-		ItemStack itemStack = new ItemStack(sign.getItem());
-		ItemStack profitStack = new ItemStack(sign.getPrice());
+		
+		/*
+		 * Test code for yaw of player to dertmine left/inv and right/profits
+		 */
+		//amt -10(left) 10(right)
+	//	int amt = 0;
+		//direction 1(front/back) 0(left/right)
+	//	int direction = 0;
+	//	float z = (float) (player.getLocation().getZ() + 0 *Math.sin(Math.toRadians(player.getLocation().getYaw() +90 * -10)));
+		
+		
+		
+		
+		//-------------------------------------------------------------
+		
 		
 		for(int i=0;i<blockFaces.length;i++){
 			Block chestBlockA = clickedBlock.getRelative(blockFaces[i][0]);
-			
-			if(chestBlockA.getState() instanceof Chest){
-				Chest chestA = (Chest) chestBlockA.getState();
-
-				if(chestA.getInventory() instanceof DoubleChestInventory){
-					DoubleChestInventory dInv = (DoubleChestInventory) chestA.getInventory();
-
-					containsItem = dInv.containsAtLeast(itemStack, 1);
-					containsProfit = dInv.containsAtLeast(profitStack,1);
-					
-					if(containsItem){
-						if(!isInvAvailable(dInv, itemStack, sign.getItemQuantity())){
-							return false;
-						}
-						setInv(dInv);
-						
-					}else if(containsProfit){
-						if(!chestHasRoom(dInv, profitStack, sign.getPriceQuantity())){
-							return false;
-						}
-						setProfits(dInv);
-					}
-					
-				}
-
-				
+			if(saveInventory(chestBlockA, sign.getItem(), sign.getPrice())){
 				Block chestBlockB = clickedBlock.getRelative(blockFaces[i][1]);
-				if(chestBlockB.getState() instanceof Chest){
-					Chest chestB = (Chest) chestBlockB.getState();
-					
-					if(chestB.getInventory() instanceof DoubleChestInventory){
-						DoubleChestInventory dInvB = (DoubleChestInventory) chestB.getInventory();
-
-						if(!containsItem){
-							containsItem = dInvB.containsAtLeast(itemStack,1);
-							if(containsItem){
-								if(!isInvAvailable(dInvB, itemStack, sign.getItemQuantity())){
-									return false;
-								}
-								setInv(dInvB);
-							}
-						}else if(!containsProfit){
-							containsProfit = dInvB.containsAtLeast(profitStack,1);
-							if(containsProfit){
-								if(!chestHasRoom(dInvB, profitStack, sign.getPriceQuantity())){
-									return false;
-								}
-								setProfits(dInvB);
-							}
-						}
-					}
-				}
+				saveInventory(chestBlockB, sign.getItem(),sign.getPrice());
 			}
 		}
 		if(getInv()== null || getProfits() == null){
@@ -153,9 +162,8 @@ public class ShopChest {
 		return true;
 	}
 	
-	public boolean chestHasRoom(DoubleChestInventory inv, ItemStack item, int quantity){
-		item.setAmount(quantity);
-		int found = quantity;
+	public boolean chestHasRoom(DoubleChestInventory inv, ItemStack item){
+		int found = item.getAmount();
 		boolean hasRoom = false;
 		for(ItemStack stack : inv.getContents()){
 			if(stack == null) {
@@ -169,8 +177,7 @@ public class ShopChest {
 		return hasRoom;
 	}
 	
-	public boolean isInvAvailable(DoubleChestInventory inv, ItemStack item, int quantity){
-		item.setAmount(quantity+1);
+	public boolean isInvAvailable(DoubleChestInventory inv, ItemStack item){
 		int total = 0;
 
 		ItemStack[] contents = inv.getContents();
@@ -183,20 +190,87 @@ public class ShopChest {
 			}
 		}
 		
-		if(!(total >= quantity+1)){
-			message = " We are sorry, we're currently out of " + item.getType() + ". Please check back soon!";
+		if(!(total >= item.getAmount())){
+			message = " We are sorry, we're currently out of " + item.getData() + ". Please check back soon!";
 		}
-		return total >= quantity+1;
+		return total >= item.getAmount();
 	}
 	
 	public void updateProfit(ShopSign sign){
 		//needs logging
-		profits.addItem(new ItemStack(sign.getPrice(),sign.getPriceQuantity()));
+		//profits.addItem(new ItemStack(sign.getPrice(),sign.getPriceQuantity()));
+		profits.addItem(sign.getPrice());
 	}
 	
 	public void updateInv(ShopSign sign){
 		//needs logging
-		inv.removeItem(new ItemStack(sign.getItem(),sign.getItemQuantity()));
+		//inv.removeItem(new ItemStack(sign.getItem(),sign.getItemQuantity()));
+		inv.removeItem(sign.getItem());
+	}
+	
+	
+	public boolean findValues(ShopSign shopSign, Block clickedBlock){
+		//what happens when thre are different materials in the chest...
+		BlockFace[][] blockFaces = {{BlockFace.NORTH,BlockFace.SOUTH},{BlockFace.EAST,BlockFace.WEST}};
+		
+		for(int i=0;i<blockFaces.length;i++){
+			Block chestBlockA = clickedBlock.getRelative(blockFaces[i][0]);
+			
+			if(chestBlockA.getState() instanceof Chest){
+
+				Chest chestA = (Chest) chestBlockA.getState();
+
+				if(chestA.getInventory() instanceof DoubleChestInventory){
+					DoubleChestInventory dInv = (DoubleChestInventory) chestA.getInventory();
+
+					ItemStack[] contents = dInv.getContents();
+					for(ItemStack stack : contents){
+						//handle mulitple types of stacks!
+						if(stack !=null){
+							shopSign.setItemData(stack.getTypeId(), stack.getDurability());
+						}
+					}
+					
+				}
+
+				
+				Block chestBlockB = clickedBlock.getRelative(blockFaces[i][1]);
+				if(chestBlockB.getState() instanceof Chest){
+					Chest chestB = (Chest) chestBlockB.getState();
+					
+					if(chestB.getInventory() instanceof DoubleChestInventory){
+						DoubleChestInventory dInvB = (DoubleChestInventory) chestB.getInventory();
+
+						ItemStack[] contentsB = dInvB.getContents();
+						for(ItemStack stack : contentsB){
+							if(stack !=null){
+								shopSign.setPriceData(stack.getTypeId(), stack.getDurability());
+							}
+						}
+					}
+				}
+			}
+		}	
+		
+		if(shopSign.getItem() == null || shopSign.getPrice() == null){
+			message = "Shop was not successfully created! Please make sure your chests have inventory or price in them and are in the correctly location.";
+			return false;
+		}else if(shopSign.getItem() != null && shopSign.getPrice() != null){
+			return true;
+		}
+		message = "what did you do to get here";
+		return false;
+	}
+	
+	public boolean doesChestHaveItem(Inventory inv, ItemStack itemStack){
+		for(ItemStack stack: inv.getContents()){
+			if(stack !=null){
+				if(stack.getType() == itemStack.getType() && stack.getDurability() == itemStack.getDurability()){
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 	
 	public void clear(){

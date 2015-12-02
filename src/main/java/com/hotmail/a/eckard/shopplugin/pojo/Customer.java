@@ -4,7 +4,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
-public class PlayerStuff {
+public class Customer {
 	public Inventory money;
 	public String message = "";
 
@@ -28,21 +28,21 @@ public class PlayerStuff {
 	public boolean hasEnoughMoney(Inventory inv, ShopSign sign){
 		for(int i=0; i<9;i++){
 			if(inv.getItem(i)!=null){
-				if(inv.getItem(i).getType() == sign.getPrice()){
-					if(inv.getItem(i).getAmount() >= sign.getPriceQuantity()){
+				if(inv.getItem(i).getType() == sign.getPrice().getType()){
+					if(inv.getItem(i).getAmount() >= sign.getPrice().getAmount()){
 						return true;
 					}
 				}
 			}
 		}
-		message = " You do not have enough " + sign.getPrice() + " for this purchase." ;
+		message = " You do not have enough " + sign.getPrice().getType() + " for this purchase." ;
 		return false;
 	}
 	
 	public boolean isMoneyInHotBar(Inventory inv, ShopSign sign){
 		for(int i=0; i<9;i++){
 			if(inv.getItem(i)!=null){
-				if(inv.getItem(i).getType() == sign.getPrice()){
+				if(inv.getItem(i).getType() == sign.getPrice().getType()){
 					return true;
 				}
 			}
@@ -53,9 +53,18 @@ public class PlayerStuff {
 
 	public void payMerchant(ShopSign sign){
 		//need lb logging here
-		money.removeItem(new ItemStack(sign.getPrice(),sign.getPriceQuantity()));
-		money.addItem(new ItemStack(sign.getItem(), sign.getItemQuantity()));
-		message = "You have successfully purchased " + sign.getItemQuantity() + " " + sign.getItem() + " for " + sign.getPriceQuantity() + " " + sign.getPrice();
+		//money.removeItem(new ItemStack(sign.getPrice(),sign.getPriceQuantity()));
+		money.removeItem(sign.getPrice());
+		sign.getItem().setAmount(sign.getItem().getAmount()-1);
+		money.addItem(sign.getItem());
+
+		String product = sign.getItem().getData().toString();
+		product = product.replaceAll("[(\\d)]", "");
+		
+		String price = sign.getPrice().getData().toString();
+		price = price.replaceAll("[(\\d)]", "");
+		
+		message = "You have successfully purchased " + sign.getItemQuantity() + " " + product + " for " + sign.getPrice().getAmount() + " " + price;
 	}
 	
 	public void clear(){
