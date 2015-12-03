@@ -1,3 +1,11 @@
 name: ShopPlugin
 main: com.hotmail.a.eckard.shopplugin.Main
 version: 1
+
+commands:
+  basic:
+    description: This is a demo command.
+    usage: |
+           /<command> [player]
+    permission: ShopPlugin.basic
+    permission-message: You don't have <permission>
